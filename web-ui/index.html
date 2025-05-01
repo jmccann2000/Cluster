@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Adapter Table</title>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+</head>
+<body>
+  <h1>Adapter Data</h1>
+  <table id="data-table" class="display">
+    <thead>
+        <tr>
+          <th>BOM ID</th>
+          <th>Revision</th>
+          <th>Start Date</th>
+          <th>End Date</th>
+          <th>State</th>
+        </tr>
+      </thead>
+      
+  </table>
+
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <script>
+    $(document).ready(function () {
+      $('#data-table').DataTable({
+        ajax: {
+          url: 'http://localhost:5000/datatable',
+          dataSrc: 'data'
+        }
+      });
+    });
+  </script>
+</body>
+</html>

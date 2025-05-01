@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  adapter-service:
+    build: ./adapter-service
+    ports:
+      - "5000:5000"
+
+  web-ui:
+    build: ./web-ui
+    ports:
+      - "8080:80"
+    depends_on:
+      - adapter-service
