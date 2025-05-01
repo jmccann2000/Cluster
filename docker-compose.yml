@@ -4,10 +4,13 @@ services:
     build: ./adapter-service
     ports:
       - "5000:5000"
+    volumes:
+      - C:/Users/jacob/source/repos/Framework/Output/cadtalk-logs:/app/logs
+      # or for Linux/macOS: - ~/cadtalk-logs:/app/logs
 
   web-ui:
     build: ./web-ui
     ports:
-      - "8080:80"
+      - "8081:80"
     depends_on:
       - adapter-service

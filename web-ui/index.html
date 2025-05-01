@@ -1,35 +1,197 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Adapter Table</title>
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+  <meta charset="UTF-8" />
+  <title>Recent Commands</title>
+  <style>
+    .value-preview {
+      max-height: 5em;
+      overflow: hidden;
+      position: relative;
+      padding-right: 4em;
+    }
+
+    .value-expanded {
+      max-height: none;
+    }
+
+    .toggle-expand {
+      color: #007acc;
+      cursor: pointer;
+      font-size: 0.8em;
+      padding-top: 4px;
+      display: inline-block;
+    }
+
+    body {
+      font-family: sans-serif;
+      padding: 2em;
+      background-color: #f4f4f4;
+    }
+
+    h2 {
+      margin-bottom: 1em;
+    }
+
+    .command-wrapper {
+      margin-bottom: 1.5em;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+      padding: 1em;
+      overflow-wrap: break-word;
+    }
+
+    .command-summary {
+      cursor: pointer;
+      font-weight: bold;
+      margin-bottom: 0.5em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9em;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 4px;
+      vertical-align: top;
+    }
+
+    th {
+      background-color: #eee;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      margin: 0;
+      font-family: monospace;
+      font-size: 0.85em;
+    }
+  </style>
 </head>
 <body>
-  <h1>Adapter Data</h1>
-  <table id="data-table" class="display">
-    <thead>
-        <tr>
-          <th>BOM ID</th>
-          <th>Revision</th>
-          <th>Start Date</th>
-          <th>End Date</th>
-          <th>State</th>
-        </tr>
-      </thead>
-      
-  </table>
 
-  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <h2>Recent Commands</h2>
+  <div id="command-log"></div>
+
   <script>
-    $(document).ready(function () {
-      $('#data-table').DataTable({
-        ajax: {
-          url: 'http://localhost:5000/datatable',
-          dataSrc: 'data'
-        }
-      });
-    });
+    const expandedCommands = new Set(); // tracks which are expanded
+
+    function fetchCommandLog() {
+      fetch('http://localhost:5000/recent-commands')
+        .then(resp => resp.json())
+        .then(data => {
+          const container = document.getElementById('command-log');
+          container.innerHTML = ''; // clear current content
+
+          data.forEach((cmd, i) => {
+            const key = `${cmd.Timestamp}-${cmd.CommandText}`;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'command-wrapper';
+
+            const summary = document.createElement('div');
+            summary.className = 'command-summary';
+            const title = cmd.CommandText || "Unknown";
+            summary.innerHTML = `<strong>${cmd.Timestamp}</strong> — <code>${title}</code>`;
+            summary.onclick = () => {
+              if (expandedCommands.has(key)) {
+                expandedCommands.delete(key);
+                details.hidden = true;
+              } else {
+                expandedCommands.add(key);
+                details.hidden = false;
+              }
+            };
+
+            const details = document.createElement('div');
+            details.hidden = !expandedCommands.has(key); // preserve state
+
+            if (cmd.Parameters && Array.isArray(cmd.Parameters)) {
+              const table = document.createElement('table');
+
+              const thead = document.createElement('thead');
+              thead.innerHTML = `<tr>
+                <th>Name</th>
+                <th>Input Value</th>
+                <th>Output Value</th>
+              </tr>`;
+              table.appendChild(thead);
+
+              const tbody = document.createElement('tbody');
+              cmd.Parameters.forEach(p => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                  <td><strong>${p.Name}</strong></td>
+                  <td>${renderExpandableJson(p.InputValue)}</td>
+                  <td>${renderExpandableJson(p.OutputValue)}</td>
+                `;
+                tbody.appendChild(row);
+              });
+
+              table.appendChild(tbody);
+              details.appendChild(table);
+            } else {
+              details.innerText = 'No parameters found.';
+            }
+
+            wrapper.appendChild(summary);
+            wrapper.appendChild(details);
+            container.appendChild(wrapper);
+          });
+        })
+        .catch(err => {
+          console.error('Fetch error:', err);
+        });
+    }
+
+    function renderExpandableJson(value) {
+      if (!value) return "";
+
+      const fullText = formatJson(value);
+      const isLong = fullText.length > 300;
+
+      if (!isLong) {
+        return `<pre>${fullText}</pre>`;
+      }
+
+      const previewText = fullText.substring(0, 300) + "...";
+      const id = 'val_' + Math.random().toString(36).substring(2);
+
+      return `
+        <div>
+          <pre id="${id}" class="value-preview">${previewText}</pre>
+          <span class="toggle-expand" onclick="
+            const el = document.getElementById('${id}');
+            if (el.classList.contains('value-expanded')) {
+              el.textContent = ${JSON.stringify(previewText)};
+              el.classList.remove('value-expanded');
+              this.textContent = 'Show more';
+            } else {
+              el.textContent = ${JSON.stringify(fullText)};
+              el.classList.add('value-expanded');
+              this.textContent = 'Show less';
+            }
+          ">Show more</span>
+        </div>
+      `;
+    }
+
+    function formatJson(value) {
+      if (!value) return "";
+      try {
+        const obj = JSON.parse(value);
+        return JSON.stringify(obj, null, 2);
+      } catch {
+        return value;
+      }
+    }
+
+    fetchCommandLog();
+    setInterval(fetchCommandLog, 3000);
   </script>
+
 </body>
 </html>

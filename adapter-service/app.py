@@ -1,25 +1,24 @@
+import json
+import os
 from flask import Flask, jsonify
-import random
-import datetime
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # allow all origins
+CORS(app)  # Enable cross-origin requests from frontend
 
-@app.route('/datatable', methods=['GET'])
-def get_datatable():
-    fake_states = ["Draft", "Released", "Obsolete", "In Review"]
-    data = []
+@app.route('/recent-commands')
+def recent_commands():
+    log_path = '/app/logs/executed-commands.jsonl'  # inside Docker path
 
-    for i in range(1, 6):  # 5 rows
-        bom_id = f"BOM-{1000 + i}"
-        revision = f"Rev-{chr(64 + i)}"  # A, B, C...
-        start_date = (datetime.date.today() - datetime.timedelta(days=random.randint(1, 100))).isoformat()
-        end_date = (datetime.date.today() + datetime.timedelta(days=random.randint(1, 100))).isoformat()
-        state = random.choice(fake_states)
-        data.append([bom_id, revision, start_date, end_date, state])
+    if not os.path.exists(log_path):
+        return jsonify({"error": "Log file not found"})
 
-    return jsonify({"data": data})
+    try:
+        with open(log_path) as f:
+            lines = f.readlines()[-10:]  # Get last 10 commands
+            return jsonify([json.loads(line) for line in lines])
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000)  # <<< THIS is what makes it reachable from browser
